@@ -1,0 +1,83 @@
+# Значення за замовчуванням відповідають середовищу розробки (dev).
+
+replicaCount: 1
+
+image:
+  repository: farm-association
+  # якщо порожньо — береться appVersion з Chart.yaml
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+probes:
+  path: /health
+  readinessInitialDelay: 5
+  livenessInitialDelay: 15
+
+# параметри застосунку -> ConfigMap
+config:
+  pgPort: "5432"
+  pgDatabase: farm_db
+  pgUser: postgres
+  # порожньо -> ім'я Service бази цього релізу
+  pgHost: ""
+
+# чутливі параметри -> Secret
+# Паролі в Git не зберігаються. Два варіанти:
+#  1) existingSecret: ім'я Secret, створеного в кластері заздалегідь
+#     (ключі PG_PASSWORD і SECRET_KEY) — чарт свій Secret не створює;
+#  2) pgPassword/secretKey через --set під час helm install.
+secret:
+  existingSecret: ""
+  pgPassword: ""
+  secretKey: ""
+
+ingress:
+  enabled: false
+  className: nginx
+  host: farm-dev.local
+
+# через скільки секунд невдале оновлення вважається Degraded
+progressDeadlineSeconds: 600
+
+rollingUpdate:
+  maxUnavailable: 0
+  maxSurge: 1
+
+postgres:
+  image: postgres:15-alpine
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+
+# хук pre-upgrade: перевірка доступності БД перед оновленням
+hooks:
+  preUpgrade:
+    enabled: true
+
+# тест для helm test
+tests:
+  enabled: true

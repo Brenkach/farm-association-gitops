@@ -1,0 +1,27 @@
+# Application для Helm-чарта застосунку
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: farm-association
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Brenkach/farm-association-gitops.git
+    targetRevision: main
+    path: charts/farm-association
+    helm:
+      valueFiles:
+        - values-minikube.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: farm
+  syncPolicy:
+    automated:
+      prune: true
+      # спершу false — для демонстрації дрейфу (OutOfSync), потім true
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true

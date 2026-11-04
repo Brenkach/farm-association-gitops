@@ -1,0 +1,27 @@
+# Значення для кластера minikube (керується Argo CD)
+replicaCount: 2
+
+image:
+  repository: ghcr.io/brenkach/farm-association
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# пароль і ключ лежать у Secret farm-secret, створеному в кластері вручну
+secret:
+  existingSecret: farm-secret
+
+ingress:
+  enabled: true
+  className: nginx
+  host: farm.local
+
+# невдале оновлення стає Degraded через 60 с, а не через 10 хв
+progressDeadlineSeconds: 60
+
+# Helm-хуки й тести вимикаємо: Argo CD виконує pre-upgrade як PreSync
+# ще до створення бази, а helm test не підтримує
+hooks:
+  preUpgrade:
+    enabled: false
+tests:
+  enabled: false
