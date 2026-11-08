@@ -1,0 +1,26 @@
+{{- if .Values.rollout.enabled }}
+# Argo Rollouts: замінює Deployment, оновлення йде кроками canary
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "farm.fullname" . }}
+  labels:
+    {{- include "farm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.replicaCount }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "farm.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    {{- include "farm.webPodTemplate" . | nindent 4 }}
+  strategy:
+    canary:
+      maxSurge: {{ .Values.rollout.canary.maxSurge }}
+      maxUnavailable: {{ .Values.rollout.canary.maxUnavailable }}
+      steps:
+        {{- toYaml .Values.rollout.canary.steps | nindent 8 }}
+{{- end }}

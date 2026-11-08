@@ -55,3 +55,52 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "farm.secretName" -}}
 {{- .Values.secret.existingSecret | default (printf "%s-secret" (include "farm.fullname" .)) }}
 {{- end }}
+
+{{/* Шаблон пода застосунку: спільний для Deployment і Rollout */}}
+{{- define "farm.webPodTemplate" -}}
+metadata:
+  labels:
+    {{- include "farm.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+  annotations:
+    # перезапуск подів при зміні конфігурації
+    checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
+    {{- if not .Values.secret.existingSecret }}
+    checksum/secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
+    {{- end }}
+spec:
+  initContainers:
+    - name: wait-for-db
+      image: {{ .Values.postgres.image }}
+      command: ["sh", "-c", "until pg_isready -h $PG_HOST -p $PG_PORT; do echo waiting for db; sleep 2; done"]
+      envFrom:
+        - configMapRef:
+            name: {{ include "farm.fullname" . }}-config
+  containers:
+    - name: web
+      image: {{ include "farm.image" . }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      ports:
+        - name: http
+          containerPort: {{ .Values.service.targetPort }}
+      envFrom:
+        - configMapRef:
+            name: {{ include "farm.fullname" . }}-config
+        - secretRef:
+            name: {{ include "farm.secretName" . }}
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      readinessProbe:
+        httpGet:
+          path: {{ .Values.probes.path }}
+          port: http
+        initialDelaySeconds: {{ .Values.probes.readinessInitialDelay }}
+        periodSeconds: 5
+      livenessProbe:
+        httpGet:
+          path: {{ .Values.probes.path }}
+          port: http
+        initialDelaySeconds: {{ .Values.probes.livenessInitialDelay }}
+        periodSeconds: 10
+        failureThreshold: 3
+{{- end }}

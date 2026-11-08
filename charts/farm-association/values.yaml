@@ -55,9 +55,26 @@ ingress:
 # через скільки секунд невдале оновлення вважається Degraded
 progressDeadlineSeconds: 600
 
+# стратегія для звичайного Deployment
 rollingUpdate:
   maxUnavailable: 0
   maxSurge: 1
+
+# Argo Rollouts: якщо enabled, замість Deployment створюється Rollout
+rollout:
+  enabled: false
+  canary:
+    maxSurge: 1
+    maxUnavailable: 0
+    steps:
+      - setWeight: 25
+      - pause: {}
+      - setWeight: 50
+      - pause:
+          duration: 30s
+      - setWeight: 75
+      - pause:
+          duration: 30s
 
 postgres:
   image: postgres:15-alpine
