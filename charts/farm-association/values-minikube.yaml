@@ -4,7 +4,7 @@ replicaCount: 4
 
 image:
   repository: ghcr.io/brenkach/farm-association
-  tag: "1.1.0"
+  tag: "1.2.0"
   pullPolicy: IfNotPresent
 
 # пароль і ключ лежать у Secret farm-secret, створеному в кластері вручну
