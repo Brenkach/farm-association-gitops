@@ -83,6 +83,9 @@ spec:
       ports:
         - name: http
           containerPort: {{ .Values.service.targetPort }}
+      env:
+        - name: FAIL_RATE
+          value: {{ .Values.failRate | quote }}
       envFrom:
         - configMapRef:
             name: {{ include "farm.fullname" . }}-config
@@ -103,4 +106,9 @@ spec:
         initialDelaySeconds: {{ .Values.probes.livenessInitialDelay }}
         periodSeconds: 10
         failureThreshold: 3
+{{- end }}
+
+{{/* Спільний фільтр PromQL: запити застосунку без проб /health */}}
+{{- define "farm.promSelector" -}}
+namespace="{{ .Release.Namespace }}",service="{{ include "farm.fullname" . }}",route!="/health"
 {{- end }}

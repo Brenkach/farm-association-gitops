@@ -1,0 +1,29 @@
+{{- if and .Values.rollout.enabled .Values.rollout.analysis.enabled }}
+# Аналіз canary: частка відповідей без 5xx серед запитів до подів нової версії.
+# Мітку rollouts_pod_template_hash додає ServiceMonitor (podTargetLabels).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "farm.fullname" . }}-success-rate
+  labels:
+    {{- include "farm.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: namespace
+    - name: canary-hash
+  metrics:
+    - name: success-rate
+      interval: {{ .Values.rollout.analysis.interval }}
+      count: {{ .Values.rollout.analysis.count }}
+      failureLimit: {{ .Values.rollout.analysis.failureLimit }}
+      # немає даних -> жодна умова не виконується -> Inconclusive (реліз стає на паузу)
+      successCondition: len(result) > 0 && !isNaN(result[0]) && result[0] >= {{ .Values.rollout.analysis.successThreshold }}
+      failureCondition: len(result) > 0 && !isNaN(result[0]) && result[0] < {{ .Values.rollout.analysis.successThreshold }}
+      provider:
+        prometheus:
+          address: {{ .Values.rollout.analysis.prometheusAddress }}
+          query: |
+            sum(rate(http_requests_total{namespace="{{ "{{args.namespace}}" }}",service="{{ include "farm.fullname" . }}",route!="/health",rollouts_pod_template_hash="{{ "{{args.canary-hash}}" }}",status!~"5.."}[1m]))
+            /
+            sum(rate(http_requests_total{namespace="{{ "{{args.namespace}}" }}",service="{{ include "farm.fullname" . }}",route!="/health",rollouts_pod_template_hash="{{ "{{args.canary-hash}}" }}"}[1m]))
+{{- end }}

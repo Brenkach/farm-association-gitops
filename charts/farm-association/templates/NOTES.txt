@@ -18,3 +18,7 @@
   1. kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "farm.fullname" . }} 8080:{{ .Values.service.port }}
   2. Відкрийте http://localhost:8080
 {{- end }}
+{{- if .Values.metrics.serviceMonitor.enabled }}
+
+Метрики: http://<под>:{{ .Values.service.targetPort }}/metrics (збирає Prometheus через ServiceMonitor)
+{{- end }}

@@ -1,0 +1,13 @@
+{{- if .Values.dashboard.enabled }}
+# sidecar Grafana знаходить ConfigMap за міткою grafana_dashboard і імпортує JSON
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "farm.fullname" . }}-dashboard
+  labels:
+    {{- include "farm.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  farm-association.json: |-
+    {{- .Files.Get "dashboards/farm-association.json" | nindent 4 }}
+{{- end }}

@@ -4,8 +4,11 @@ replicaCount: 4
 
 image:
   repository: ghcr.io/brenkach/farm-association
-  tag: "1.2.0"
+  tag: "1.4.0"
   pullPolicy: IfNotPresent
+
+# частка відповідей 500; "0" — нормальна робота
+failRate: "0"
 
 # пароль і ключ лежать у Secret farm-secret, створеному в кластері вручну
 secret:
@@ -19,7 +22,7 @@ ingress:
 # невдале оновлення стає Degraded через 60 с, а не через 10 хв
 progressDeadlineSeconds: 60
 
-# Progressive delivery: canary через Argo Rollouts
+# Progressive delivery: canary через Argo Rollouts з автоматичним аналізом
 rollout:
   enabled: true
   canary:
@@ -27,13 +30,35 @@ rollout:
     maxUnavailable: 0
     steps:
       - setWeight: 25        # 1 з 4 подів — нова версія
-      - pause: {}            # ручна пауза: чекаємо promote
-      - setWeight: 50        # 2 з 4
       - pause:
-          duration: 30s      # пауза з таймером
-      - setWeight: 75        # 3 з 4
+          duration: 30s      # Prometheus збирає метрики canary
+      - analysis:            # частка успішних запитів canary >= 95 %, інакше abort
+          templates:
+            - templateName: '{{ include "farm.fullname" . }}-success-rate'
+          args:
+            - name: namespace
+              value: '{{ .Release.Namespace }}'
+            - name: canary-hash
+              valueFrom:
+                podTemplateHashValue: Latest
+      - pause: {}            # ручна пауза: чекаємо promote
+      - setWeight: 50
       - pause:
           duration: 30s
+      - setWeight: 75
+      - pause:
+          duration: 30s
+  analysis:
+    enabled: true
+
+metrics:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+
+dashboard:
+  enabled: true
 
 # Helm-хуки й тести вимикаємо: Argo CD виконує pre-upgrade як PreSync
 # ще до створення бази, а helm test не підтримує

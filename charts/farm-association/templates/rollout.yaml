@@ -22,5 +22,5 @@ spec:
       maxSurge: {{ .Values.rollout.canary.maxSurge }}
       maxUnavailable: {{ .Values.rollout.canary.maxUnavailable }}
       steps:
-        {{- toYaml .Values.rollout.canary.steps | nindent 8 }}
+        {{- tpl (toYaml .Values.rollout.canary.steps) . | nindent 8 }}
 {{- end }}

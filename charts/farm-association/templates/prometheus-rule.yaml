@@ -1,0 +1,23 @@
+{{- if .Values.metrics.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "farm.fullname" . }}
+  labels:
+    {{- include "farm.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: {{ include "farm.fullname" . }}
+      rules:
+        - alert: FarmHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{ {{- include "farm.promSelector" . }},status=~"5.."}[1m]))
+            /
+            sum(rate(http_requests_total{ {{- include "farm.promSelector" . }}}[1m]))
+            > {{ .Values.metrics.prometheusRule.errorRateThreshold }}
+          for: 15s
+          labels:
+            severity: warning
+          annotations:
+            summary: Частка відповідей 5xx застосунку перевищує {{ mulf .Values.metrics.prometheusRule.errorRateThreshold 100 }} %
+{{- end }}

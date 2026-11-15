@@ -29,6 +29,9 @@ probes:
   readinessInitialDelay: 5
   livenessInitialDelay: 15
 
+# частка запитів, які застосунок свідомо завершує кодом 500 (для перевірки відкату)
+failRate: "0"
+
 # параметри застосунку -> ConfigMap
 config:
   pgPort: "5432"
@@ -66,6 +69,7 @@ rollout:
   canary:
     maxSurge: 1
     maxUnavailable: 0
+    # кроки проходять через tpl, тому в них можна писати шаблони Helm
     steps:
       - setWeight: 25
       - pause: {}
@@ -75,6 +79,27 @@ rollout:
       - setWeight: 75
       - pause:
           duration: 30s
+  # AnalysisTemplate: частка успішних запитів canary-версії за даними Prometheus
+  analysis:
+    enabled: false
+    prometheusAddress: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+    successThreshold: 0.95
+    interval: 20s
+    count: 3
+    failureLimit: 1
+
+# моніторинг (потрібен kube-prometheus-stack у кластері)
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 10s
+  prometheusRule:
+    enabled: false
+    errorRateThreshold: 0.05
+
+# дашборд Grafana як ConfigMap з міткою grafana_dashboard
+dashboard:
+  enabled: false
 
 postgres:
   image: postgres:15-alpine

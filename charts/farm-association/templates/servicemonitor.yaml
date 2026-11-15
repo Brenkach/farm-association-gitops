@@ -1,0 +1,22 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+# Prometheus Operator знаходить цей ServiceMonitor і збирає /metrics з усіх подів Service
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "farm.fullname" . }}
+  labels:
+    {{- include "farm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  selector:
+    matchLabels:
+      {{- include "farm.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  # мітка пода стає міткою метрики: так Prometheus відрізняє stable і canary
+  podTargetLabels:
+    - rollouts-pod-template-hash
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+{{- end }}
