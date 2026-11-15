@@ -1,0 +1,72 @@
+# Prometheus, Alertmanager, Grafana, kube-state-metrics, node-exporter
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 92.11.0
+    helm:
+      valuesObject:
+        # компоненти control plane minikube недоступні для збору метрик
+        kubeEtcd:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        # без admission webhook-ів: їхні сертифікати постійно дають OutOfSync в Argo CD
+        prometheusOperator:
+          admissionWebhooks:
+            enabled: false
+          tls:
+            enabled: false
+        prometheus:
+          prometheusSpec:
+            # брати ServiceMonitor / PodMonitor / PrometheusRule з усіх namespace,
+            # а не лише з міткою release=kube-prometheus-stack
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            retention: 2d
+            resources:
+              requests:
+                cpu: 100m
+                memory: 400Mi
+        alertmanager:
+          alertmanagerSpec:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+        grafana:
+          # логін і пароль адміністратора — у Secret, створеному вручну (не в Git)
+          admin:
+            existingSecret: grafana-admin
+            userKey: admin-user
+            passwordKey: admin-password
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              uid: loki
+              access: proxy
+              url: http://loki.monitoring.svc:3100
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRD Prometheus Operator завеликі для звичайного kubectl apply
+      - ServerSideApply=true
