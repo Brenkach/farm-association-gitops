@@ -8,7 +8,7 @@ image:
   pullPolicy: IfNotPresent
 
 # частка відповідей 500; "0" — нормальна робота
-failRate: "0"
+failRate: "0.5"
 
 # пароль і ключ лежать у Secret farm-secret, створеному в кластері вручну
 secret:
